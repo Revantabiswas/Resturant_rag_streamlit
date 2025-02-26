@@ -6,7 +6,7 @@ from crewai import Agent, Task, Crew, Process
 from langchain_groq import ChatGroq
 from langchain.vectorstores import FAISS
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain.embeddings import HuggingFaceEmbeddings
+from langchain_community.embeddings import HuggingFaceEmbeddings
 from datetime import datetime, timedelta
 
 # Load API Key
@@ -151,21 +151,35 @@ if st.button("Mass Booking"):
     # Generate a list of available dates for the next 7 days
     available_dates = [(datetime.now() + timedelta(days=i)).strftime('%Y-%m-%d') for i in range(7)]
 
-    # Display available dates with checkboxes
-    selected_dates = st.multiselect("Select dates for booking:", available_dates)
+    with st.form("booking_form"):
+        # Display available dates with checkboxes inside a form
+        selected_dates = st.multiselect("Select dates for booking:", available_dates)
+        submit_booking = st.form_submit_button("Submit Booking")
 
-    # If dates are selected, input them into the chatbot
-    if selected_dates:
-        booking_message = f"Booking requested for dates: {', '.join(selected_dates)}"
-        st.session_state.messages.append({"role": "user", "content": booking_message})
-        with st.chat_message("user"):
-            st.markdown(booking_message)
+        if submit_booking and selected_dates:
+            booking_prompt = f"I would like to reserve a table for the following dates: {', '.join(selected_dates)}"
+            # Append booking prompt as a user message
+            st.session_state.messages.append({"role": "user", "content": booking_prompt})
+            with st.chat_message("user"):
+                st.markdown(booking_prompt)
 
-        # Simulate chatbot response for booking
-        response = "Your booking request has been received. We will confirm availability soon."
-        st.session_state.messages.append({"role": "assistant", "content": response})
-        with st.chat_message("assistant"):
-            st.markdown(response)
+            # Process booking prompt using reservation flow
+            if not st.session_state.get("vector_ready", False):
+                response = "⚠️ Please initialize the knowledge base first using the sidebar button."
+            else:
+                similar_docs = st.session_state.vectors.similarity_search(booking_prompt, k=3)
+                retrieved_context = "\n".join(
+                    [doc.page_content if hasattr(doc, "page_content") else str(doc) for doc in similar_docs]
+                )
+                enhanced_question = f"Context:\n{retrieved_context}\n\nQuestion:\n{booking_prompt}"
+                reservation_agent = create_reservation_agent()
+                task = create_reservation_task(reservation_agent, enhanced_question)
+                crew = Crew(agents=[reservation_agent], tasks=[task], process=Process.sequential, verbose=True)
+                response = crew.kickoff(inputs={"question": enhanced_question})
+
+            st.session_state.messages.append({"role": "assistant", "content": response})
+            with st.chat_message("assistant"):
+                st.markdown(response)
 
 # Initialize Vector Store
 if st.sidebar.button("Initialize Knowledge Base"):
