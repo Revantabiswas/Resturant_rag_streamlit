@@ -47,12 +47,12 @@ st.markdown(
 )
 
 # Sidebar
-st.sidebar.image("1.png", use_container_width=True)
+st.sidebar.image("Resturant_rag_streamlit\\1.png", use_container_width=True)
 st.sidebar.title("Navigation")
 st.sidebar.markdown("👋 Welcome to the AI-powered Restaurant Assistant!")
 
 # Main Header with Background Image
-st.image("2.jpg", use_container_width=True)
+st.image("Resturant_rag_streamlit\\2.jpg", use_container_width=True)
 st.title("🍽️ Welcome To Indian Palace")
 st.markdown("**Ask anything about our restaurant, menu, and reservations!**")
 
@@ -60,7 +60,7 @@ st.markdown("**Ask anything about our restaurant, menu, and reservations!**")
 if st.sidebar.button("Initialize Knowledge Base"):
     try:
         embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
-        pdf_directory = "restaurant_docs"
+        pdf_directory = "Resturant_rag_streamlit\\restaurant_docs"
         all_text = []
 
         for pdf_file in os.listdir(pdf_directory):
@@ -124,21 +124,29 @@ if st.button("🔍 Get Response"):
     if "vector_ready" not in st.session_state:
         st.error("⚠️ Please initialize the knowledge base first.")
     elif question:
+        # Retrieve relevant context from the vector store
+        similar_docs = st.session_state.vectors.similarity_search(question, k=3)
+        # Combine retrieved contexts into one string. Use .page_content if available.
+        retrieved_context = "\n".join([doc.page_content if hasattr(doc, 'page_content') else str(doc) for doc in similar_docs])
+        
+        # Inject the retrieved context into the prompt
+        enhanced_question = f"Context:\n{retrieved_context}\n\nQuestion:\n{question}"
+
         # Create Agents
         reservation_agent = create_reservation_agent()
         inquiry_agent = create_inquiry_agent()
 
         # Determine Task Type
         if "reservation" in question.lower() or "book a table" in question.lower():
-            task = create_reservation_task(reservation_agent, question)
+            task = create_reservation_task(reservation_agent, enhanced_question)
             agent = reservation_agent
         else:
-            task = create_inquiry_task(inquiry_agent, question)
+            task = create_inquiry_task(inquiry_agent, enhanced_question)
             agent = inquiry_agent
 
         # Create Crew and Execute
         crew = Crew(agents=[agent], tasks=[task], process=Process.sequential, verbose=True)
-        result = crew.kickoff(inputs={"question": question})
+        result = crew.kickoff(inputs={"question": enhanced_question})
         
         st.success("✅ Answer:")
         st.info(result)
