@@ -1,35 +1,35 @@
-from dotenv import load_dotenv
-load_dotenv('Resturant_rag_streamlit\\.env')
+import os
+import re
+from datetime import datetime, timedelta
 
 import streamlit as st
-from database import init_db, add_booking, get_bookings, update_booking_status
+from dotenv import load_dotenv
+
+from database import init_db, add_booking, get_bookings
 from agents import create_reservation_agent, create_inquiry_agent, create_reservation_task, create_inquiry_task
 from utils import load_environment, get_max_capacity, initialize_knowledge_base
 from langchain_groq import ChatGroq
-import os
 from crewai import Agent, Task, Crew, Process
 
-from datetime import datetime, timedelta
-import re
-
-groq_api_key = os.getenv('GROQ_API_KEY')
-
-llm = ChatGroq(
-    model="groq/llama3-8b-8192",
-    api_key=groq_api_key
-)
-
-# Load environment variables
+# Load environment variables from .env file and project config.
+load_dotenv('Resturant_rag_streamlit\\.env')
 load_environment()
 
 # Initialize database
 init_db()
 
-# Load CSS styles
+# Configure LangChain LLM
+groq_api_key = os.getenv('GROQ_API_KEY')
+llm = ChatGroq(
+    model="groq/llama3-8b-8192",
+    api_key=groq_api_key
+)
+
+# CSS Styles
 st.markdown(
     """
     <style>
-        body {
+             body {
             background-color: #f8f9fa;
         }
         .stButton > button {
@@ -50,31 +50,58 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-# Sidebar and main header setup
+# Sidebar and header image setups
 st.sidebar.image("Resturant_rag_streamlit/1.png", use_container_width=True)
 st.sidebar.title("Navigation")
 st.sidebar.markdown("👋 Welcome to the AI-powered Restaurant Assistant!")
-
 st.image("Resturant_rag_streamlit/2.jpg", use_container_width=True)
 st.title("🍽️ Welcome To Indian Palace")
 st.markdown("**Ask anything about our restaurant, menu, and reservations!**")
 
-# Chatbot section
-st.header("Chatbot Assistant")
-
+# Chat session initialization
 if 'messages' not in st.session_state:
     st.session_state.messages = []
 
-# Display chat messages
+def add_message(role: str, content: str):
+    st.session_state.messages.append({"role": role, "content": content})
+    with st.chat_message(role):
+        st.markdown(content)
+
+def process_reservation(prompt: str, enhanced_question: str):
+    # Extract booking details
+    date_match = re.search(r'\b(\d{4}-\d{2}-\d{2})\b', prompt)
+    booking_date = date_match.group(1) if date_match else (datetime.now() + timedelta(days=1)).strftime("%Y-%m-%d")
+    num_match = re.search(r'\b(\d+)\b', prompt)
+    number_of_people = int(num_match.group(1)) if num_match else 2
+
+    # Capacity check
+    MAX_CAPACITY = get_max_capacity()
+    existing_bookings = get_bookings()
+    total_guests = sum(b[2] for b in existing_bookings if b[1] == booking_date)
+
+    if total_guests + number_of_people > MAX_CAPACITY:
+        return f"Sorry, we are fully booked for {booking_date} (Max capacity: {MAX_CAPACITY} guests). Please choose another date or reduce the party size.", None
+
+    add_booking(booking_date, number_of_people)
+    confirmation = f"Reservation recorded for {number_of_people} people on {booking_date}."
+    reservation_agent = create_reservation_agent()
+    task = create_reservation_task(reservation_agent, enhanced_question)
+    crew = Crew(agents=[reservation_agent], tasks=[task], process=Process.sequential, verbose=True)
+    return confirmation, crew.kickoff(inputs={"question": enhanced_question})
+
+def process_inquiry(enhanced_question: str):
+    inquiry_agent = create_inquiry_agent()
+    task = create_inquiry_task(inquiry_agent, enhanced_question)
+    crew = Crew(agents=[inquiry_agent], tasks=[task], process=Process.sequential, verbose=True)
+    return crew.kickoff(inputs={"question": enhanced_question})
+
+# Display previous chat messages
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
-# Unified chat input reservation logic
 if prompt := st.chat_input("How can I assist you today?"):
-    st.session_state.messages.append({"role": "user", "content": prompt})
-    with st.chat_message("user"):
-        st.markdown(prompt)
+    add_message("user", prompt)
     if not st.session_state.get("vector_ready", False):
         response = "⚠️ Please initialize the knowledge base first using the sidebar button."
     else:
@@ -83,72 +110,45 @@ if prompt := st.chat_input("How can I assist you today?"):
             [doc.page_content if hasattr(doc, "page_content") else str(doc) for doc in similar_docs]
         )
         enhanced_question = f"Context:\n{retrieved_context}\n\nQuestion:\n{prompt}"
-        reservation_agent = create_reservation_agent()
-        inquiry_agent = create_inquiry_agent()
-        # If the prompt is a reservation request, process booking with capacity check
         if "reservation" in prompt.lower() or "book a table" in prompt.lower():
-            # Extract booking date and number of people from the prompt
-            date_match = re.search(r'\b(\d{4}-\d{2}-\d{2})\b', prompt)
-            booking_date = date_match.group(1) if date_match else (datetime.now() + timedelta(days=1)).strftime("%Y-%m-%d")
-            num_match = re.search(r'\b(\d+)\b', prompt)
-            number_of_people = int(num_match.group(1)) if num_match else 2
-
-            # Get max capacity from PDF
-            MAX_CAPACITY = get_max_capacity()
-
-            # Check existing bookings for the same date
-            existing_bookings = get_bookings()
-            total_guests = sum(b[2] for b in existing_bookings if b[1] == booking_date)
-
-            if total_guests + number_of_people > MAX_CAPACITY:
-                capacity_msg = f"Sorry, we are fully booked for {booking_date} (Max capacity: {MAX_CAPACITY} guests). Please choose another date or reduce the party size."
-                st.session_state.messages.append({"role": "assistant", "content": capacity_msg})
-                with st.chat_message("assistant"):
-                    st.markdown(capacity_msg)
-                response = capacity_msg
+            response_msg, llm_response = process_reservation(prompt, enhanced_question)
+            add_message("assistant", response_msg)
+            if llm_response:
+                response = llm_response
             else:
-                # Record the new booking in the database
-                add_booking(booking_date, number_of_people)
-                booking_confirmation = f"Reservation recorded for {number_of_people} people on {booking_date}."
-                st.session_state.messages.append({"role": "assistant", "content": booking_confirmation})
-                with st.chat_message("assistant"):
-                    st.markdown(booking_confirmation)
-                task = create_reservation_task(reservation_agent, enhanced_question)
-                agent = reservation_agent
-                crew = Crew(agents=[agent], tasks=[task], process=Process.sequential, verbose=True)
-                response = crew.kickoff(inputs={"question": enhanced_question})
+                response = response_msg
         else:
-            task = create_inquiry_task(inquiry_agent, enhanced_question)
-            agent = inquiry_agent
-            crew = Crew(agents=[agent], tasks=[task], process=Process.sequential, verbose=True)
-            response = crew.kickoff(inputs={"question": enhanced_question})
-    st.session_state.messages.append({"role": "assistant", "content": response})
-    with st.chat_message("assistant"):
-        st.markdown(response)
+            response = process_inquiry(enhanced_question)
+    add_message("assistant", response)
+
+def process_mass_booking(selected_dates, number_of_people, base_booking_text):
+    for date in selected_dates:
+        booking_message = f"{base_booking_text} for {number_of_people} people on {date}."
+        add_message("user", booking_message)
+        enhanced_booking_question = f"Please confirm and process the following booking: {booking_message}"
+        reservation_agent = create_reservation_agent()
+        task = create_reservation_task(reservation_agent, enhanced_booking_question)
+        crew = Crew(agents=[reservation_agent], tasks=[task], process=Process.sequential, verbose=True)
+        llm_response = crew.kickoff(inputs={"question": enhanced_booking_question})
+        add_booking(date, number_of_people)
+        confirmation_message = f"Booking for {number_of_people} people on {date} has been recorded."
+        add_message("assistant", confirmation_message)
+        add_message("assistant", llm_response)
 
 # Mass booking section
 if st.button("Mass Booking"):
     st.header("Available Dates")
     available_dates = [(datetime.now() + timedelta(days=i)).strftime('%Y-%m-%d') for i in range(7)]
-    # Use a form to combine date selection and number of people
     with st.form("booking_form"):
         selected_dates = st.multiselect("Select dates for booking:", available_dates)
         number_of_people = st.number_input("Number of People", min_value=1, max_value=20, value=1)
+        base_booking_text = st.text_area("Edit your booking message (this will be sent to our system):",
+                                         value="Mass booking request",
+                                         height=80)
         submit_booking = st.form_submit_button("Confirm Booking")
         if submit_booking and selected_dates:
-            for date in selected_dates:
-                # Add each booking to the database
-                add_booking(date, number_of_people)
-                booking_message = f"Booking requested for {number_of_people} people on {date}"
-                st.session_state.messages.append({"role": "user", "content": booking_message})
-                with st.chat_message("user"):
-                    st.markdown(booking_message)
-                # Simulated chatbot response for booking requests (you can invoke a real flow if needed)
-                response = "Your booking request has been received. We will confirm availability soon."
-                st.session_state.messages.append({"role": "assistant", "content": response})
-                with st.chat_message("assistant"):
-                    st.markdown(response)
+            process_mass_booking(selected_dates, number_of_people, base_booking_text)
 
-# Vector store initialization
+# Knowledge Base Initialization
 if st.sidebar.button("Initialize Knowledge Base"):
     initialize_knowledge_base()
