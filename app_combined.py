@@ -95,11 +95,11 @@ st.markdown(
 )
 
 # --- Sidebar & Main Header ---
-st.sidebar.image("Resturant_rag_streamlit/1.png", use_container_width=True)
+st.sidebar.image("1.png", use_container_width=True)
 st.sidebar.title("Navigation")
 st.sidebar.markdown("👋 Welcome to the AI-powered Restaurant Assistant!")
 
-st.image("Resturant_rag_streamlit/2.jpg", use_container_width=True)
+st.image("2.jpg", use_container_width=True)
 st.title("🍽️ Welcome To Indian Palace")
 st.markdown("**Ask anything about our restaurant, menu, and reservations!**")
 

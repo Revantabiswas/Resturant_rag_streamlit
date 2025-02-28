@@ -11,7 +11,7 @@ def load_environment():
     load_dotenv()
 
 def get_max_capacity():
-    pdf_path = "Resturant_rag_streamlit/restaurant_docs/restaurant_policy.pdf"
+    pdf_path = "restaurant_docs/restaurant_policy.pdf"
     try:
         with pdfplumber.open(pdf_path) as pdf:
             for page in pdf.pages:
@@ -27,7 +27,7 @@ def get_max_capacity():
 def initialize_knowledge_base():
     try:
         embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
-        pdf_directory = "Resturant_rag_streamlit/restaurant_docs"
+        pdf_directory = "restaurant_docs"
         all_text = []
         for pdf_file in os.listdir(pdf_directory):
             if pdf_file.endswith(".pdf"):

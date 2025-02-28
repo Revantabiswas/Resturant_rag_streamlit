@@ -12,7 +12,7 @@ from langchain_groq import ChatGroq
 from crewai import Agent, Task, Crew, Process
 
 # Load environment variables from .env file and project config.
-load_dotenv('Resturant_rag_streamlit\\.env')
+load_dotenv('.env')
 load_environment()
 
 # Initialize database
@@ -51,10 +51,10 @@ st.markdown(
 )
 
 # Sidebar and header image setups
-st.sidebar.image("Resturant_rag_streamlit/1.png", use_container_width=True)
+st.sidebar.image("1.png", use_container_width=True)
 st.sidebar.title("Navigation")
 st.sidebar.markdown("👋 Welcome to the AI-powered Restaurant Assistant!")
-st.image("Resturant_rag_streamlit/2.jpg", use_container_width=True)
+st.image("2.jpg", use_container_width=True)
 st.title("🍽️ Welcome To Indian Palace")
 st.markdown("**Ask anything about our restaurant, menu, and reservations!**")
 
