@@ -8,18 +8,26 @@ from langchain.vectorstores import FAISS
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.embeddings import HuggingFaceEmbeddings
 
-# Load API Key
+# Load API Key with better error handling
 load_dotenv()
 groq_api_key = os.getenv('GROQ_API_KEY')
-if groq_api_key is None:
-    st.error("GROQ_API_KEY is not set. Please check your environment variables.")
+
+# Display API key status (for debugging, remove in production)
+if not groq_api_key:
+    st.error("GROQ_API_KEY is not set in your environment variables or .env file.")
+    st.info("Please create a .env file in the root directory with your GROQ_API_KEY or set it as an environment variable.")
+    st.code("GROQ_API_KEY=your-api-key-here", language="text")
     st.stop()
 
-# Initialize LLM
-llm = ChatGroq(
-    model="groq/llama3-8b-8192",
-    api_key=groq_api_key
-)
+# Initialize LLM with explicit API key
+try:
+    llm = ChatGroq(
+        model="groq/llama3-8b-8192",
+        api_key=groq_api_key
+    )
+except Exception as e:
+    st.error(f"Error initializing Groq LLM: {str(e)}")
+    st.stop()
 
 # Custom CSS for styling
 st.markdown(

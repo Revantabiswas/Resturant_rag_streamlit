@@ -11,18 +11,9 @@ def load_environment():
     load_dotenv()
 
 def get_max_capacity():
-    pdf_path = "restaurant_docs/restaurant_policy.pdf"
-    try:
-        with pdfplumber.open(pdf_path) as pdf:
-            for page in pdf.pages:
-                text = page.extract_text()
-                match = re.search(r"Max Capacity:\s*(\d+)", text, re.IGNORECASE)
-                if match:
-                    return int(match.group(1))
-    except Exception as e:
-        print(f"Error reading max capacity from PDF: {e}")
-    # Return a default capacity if not found
-    return 50
+    """Return the maximum restaurant capacity"""
+    # You can hardcode this value or store it in a configuration file
+    return 50  # Default restaurant capacity
 
 def initialize_knowledge_base():
     """Initialize the knowledge base with restaurant data"""

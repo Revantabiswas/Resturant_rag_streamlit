@@ -1,7 +1,17 @@
+import os
+from dotenv import load_dotenv
 from crewai import Agent, Task, Crew, Process
 from langchain_groq import ChatGroq
-from config import groq_api_key
 
+# Load API key directly from environment
+load_dotenv()
+groq_api_key = os.getenv('GROQ_API_KEY')
+
+# Validate API key
+if not groq_api_key:
+    raise ValueError("GROQ_API_KEY not found. Please set it in your .env file or environment variables.")
+
+# Initialize LLM with explicit API key
 llm = ChatGroq(
     model="groq/llama3-8b-8192",
     api_key=groq_api_key
