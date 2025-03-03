@@ -69,17 +69,8 @@ Contributions are welcome! Please open an issue or submit a pull request for any
 ## License
 
 This project is licensed under the MIT License. See the LICENSE file for details.
-```
 
-Make sure to replace `yourusername` with your actual GitHub username and `your_groq_api_key` with your actual GROQ API key.
-Make sure to replace `yourusername` with your actual GitHub username and `your_groq_api_key` with your actual GROQ API key.
-
-Revantabiswas: make it detailed and emphasize on crew ai and groq use
-
-Workspace: Collecting workspace informationHere is an updated and detailed README.md file for your project, emphasizing the use of CrewAI and Groq:
-
-```md
-# Restaurant AI Assistant
+## Restaurant AI Assistant
 
 This project is an AI-powered restaurant assistant built using Streamlit. It leverages various AI models and libraries, including CrewAI and Groq, to provide information about the restaurant, handle reservations, and answer customer inquiries.
 
