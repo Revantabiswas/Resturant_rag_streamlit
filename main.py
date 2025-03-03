@@ -194,10 +194,10 @@ def load_css():
             bottom: 20px;
             right: 20px;
             background-color: var(--primary);
-            color: white;
+            color: white !important;
             padding: 15px 20px;
             border-radius: 50px;
-            text-decoration: none;
+            text-decoration: none !important;
             box-shadow: 0 4px 8px rgba(0,0,0,0.2);
             z-index: 999;
             font-weight: bold;
@@ -205,6 +205,12 @@ def load_css():
             align-items: center;
             gap: 8px;
             transition: all 0.3s ease;
+        }
+        .floating-button:hover,
+        .floating-button:visited,
+        .floating-button:active {
+            color: white !important;
+            text-decoration: none !important;
         }
         .floating-button:hover {
             background-color: var(--accent);
@@ -315,17 +321,17 @@ def render_menu_page():
     # Appetizers Tab
     with menu_tab1:
         render_menu_item(
-            image_url="https://www.indianhealthyrecipes.com/wp-content/uploads/2021/12/samosa-recipe.jpg",
-            name="Vegetable Samosas",
-            description="Crispy pastry filled with spiced potatoes and peas",
-            price="$6.99"
+            image_url="https://www.ticklingpalates.com/wp-content/uploads/2022/06/paneer-makhani-recipe-500x500.jpg",
+            name="Paneer makhan wala",
+            description="Cottage cheese simmered in tomato gravy, Topped with cream",
+            price="₹1200"
         )
         
         render_menu_item(
-            image_url="https://www.kitchensanctuary.com/wp-content/uploads/2021/01/Onion-Bhaji-square-FS-23.jpg",
-            name="Onion Bhaji",
-            description="Crispy onion fritters with chickpea flour and spices",
-            price="$5.99"
+            image_url="https://mytastycurry.com/wp-content/uploads/2020/01/Matar-ki-tikki-1.jpg",
+            name="Chilgoza shatavari matar ki tikki",
+            description="Green peas, Asparagus and Roasted pine nuts",
+            price="₹1100"
         )
 
 def render_menu_item(image_url, name, description, price):
@@ -530,7 +536,7 @@ def render_contact_page():
         st.markdown("""
         **Address:**  
         123 Main Street  
-        New York, NY 10001
+        New Delhi, 10001
         
         **Hours:**  
         Monday-Thursday: 5:00 PM - 10:00 PM  
@@ -538,7 +544,7 @@ def render_contact_page():
         Sunday: 4:00 PM - 9:00 PM
         
         **Phone:**  
-        (555) 123-4567
+        +91-90331234567
         
         **Email:**  
         info@indianpalace.com
